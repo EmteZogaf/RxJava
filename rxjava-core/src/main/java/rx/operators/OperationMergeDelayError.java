@@ -232,12 +232,13 @@ public final class OperationMergeDelayError {
 
             @Override
             public void onError(Throwable e) {
-                actualObserver.onError(e);
+                onErrorReceived.add(e);
+                onCompleted();
             }
 
             @Override
             public void onNext(Observable<? extends T> childObservable) {
-                if (stopped.get()) {
+                if (stopped.get() || parentCompleted) {
                     // we won't act on any further items
                     return;
                 }
