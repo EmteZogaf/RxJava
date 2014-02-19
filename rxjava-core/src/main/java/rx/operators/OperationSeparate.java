@@ -1,5 +1,9 @@
 package rx.operators;
 
+import rx.Subscriber;
+
+import rx.Observable.OnSubscribe;
+
 import java.util.Collections;
 
 import rx.Observable;
@@ -9,33 +13,31 @@ import rx.util.functions.Func1;
 
 public final class OperationSeparate {
 
-    private static class SeparateObserver<T> implements Observer<T> {
+    private static class SeparateObserver<T> extends Subscriber<T> {
 
-        private Observer<Observable<T>> observer;
+        private Subscriber<? super Observable<T>> subscriber;
 
-        public SeparateObserver(Observer<Observable<T>> observer) {
-            this.observer = observer;
+        public SeparateObserver(Subscriber<? super Observable<T>> subscriber) {
+            this.subscriber = subscriber;
         }
 
         @Override
         public void onCompleted() {
-            observer.onCompleted();
+            subscriber.onCompleted();
         }
 
         @Override
         public void onError(Throwable e) {
-            observer.onError(e);
-
+            subscriber.onError(e);
         }
 
         @Override
         public void onNext(T item) {
-            observer.onNext(Observable.from(Collections.singleton(item)));
+            subscriber.onNext(Observable.just(item));
         }
-
     }
 
-    private static class SeparateObservable<T> implements Func1<Observer<Observable<T>>, Subscription> {
+    private static class SeparateObservable<T> implements OnSubscribe<Observable<T>> {
         private Observable<T> sequence;
 
         public SeparateObservable(Observable<T> sequence) {
@@ -44,10 +46,10 @@ public final class OperationSeparate {
         }
 
         @Override
-        public Subscription call(Observer<Observable<T>> observer) {
-            return sequence.subscribe(new SeparateObserver<T>(observer));
+        public void call(Subscriber<? super Observable<T>> subscriber) {
+            sequence.subscribe(new SeparateObserver<T>(subscriber));
+            
         }
-
     }
 
     /**
@@ -56,9 +58,7 @@ public final class OperationSeparate {
      * @param observable sequence which items to separate into one element {@code Observable}s
      * @return
      */
-    public static <R> Func1<Observer<Observable<R>>, Subscription> separate(Observable<R> observable) {
-        return new SeparateObservable<R>(observable);
+    public static <R> Observable<Observable<R>> separate(Observable<R> observable) {
+        return Observable.create(new SeparateObservable<R>(observable));
     }
-
-
 }
