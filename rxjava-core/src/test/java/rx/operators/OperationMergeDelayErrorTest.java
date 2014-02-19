@@ -19,6 +19,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 import static rx.operators.OperationMergeDelayError.*;
+import rx.Subscriber;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +28,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
 import rx.Observable;
 import rx.Observer;
 import rx.Subscription;
@@ -293,17 +293,15 @@ public class OperationMergeDelayErrorTest {
     public void testErrorInParentObservableDelayed() throws Exception {
         final TestASynchronous1sDelayedObservable o1 = new TestASynchronous1sDelayedObservable();
         final TestASynchronous1sDelayedObservable o2 = new TestASynchronous1sDelayedObservable();
-        Observable<Observable<String>> parentObservable = Observable.create(new Observable.OnSubscribeFunc<Observable<String>>() {
-            @Override
-            public Subscription onSubscribe(Observer<? super Observable<String>> op) {
-                op.onNext(Observable.create(o1));
-                op.onNext(Observable.create(o2));
-                op.onError(new NullPointerException("throwing exception in parent"));
-                return Subscriptions.empty();
-            }
-        });
+        Observable<Observable<String>> parentObservable = Observable.create(new Observable.OnSubscribe<Observable<String>>() {
 
-        @SuppressWarnings("unchecked")
+            @Override
+            public void call(Subscriber<? super Observable<String>> t1) {
+                t1.onNext(Observable.create(o1));
+                t1.onNext(Observable.create(o2));
+                t1.onError(new NullPointerException("throwing exception in parent"));
+            }});
+
         Observable<String> m = Observable.create(mergeDelayError(parentObservable));
         m.subscribe(stringObserver);
 
@@ -351,11 +349,11 @@ public class OperationMergeDelayErrorTest {
         }
     }
 
-    private static class TestASynchronous1sDelayedObservable implements Observable.OnSubscribeFunc<String> {
+    private static class TestASynchronous1sDelayedObservable implements Observable.OnSubscribe<String> {
         Thread t;
         
         @Override
-        public Subscription onSubscribe(final Observer<? super String> observer) {
+        public void call(final Subscriber<? super String> t1) {
             t = new Thread(new Runnable() {
                 
                 @Override
@@ -363,16 +361,14 @@ public class OperationMergeDelayErrorTest {
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
-                        observer.onError(e);
+                        t1.onError(e);
                     }
-                    observer.onNext("hello");
-                    observer.onCompleted();
+                    t1.onNext("hello");
+                    t1.onCompleted();
                 }
                 
             });
             t.start();
-            
-            return Subscriptions.empty();
         }
     }
 
