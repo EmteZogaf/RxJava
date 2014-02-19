@@ -58,7 +58,7 @@ public final class OperationSeparate {
      * @param observable sequence which items to separate into one element {@code Observable}s
      * @return
      */
-    public static <R> Observable<Observable<R>> separate(Observable<R> observable) {
-        return Observable.create(new SeparateObservable<R>(observable));
+    public static <R> OnSubscribe<Observable<R>> separate(Observable<R> observable) {
+        return new SeparateObservable<R>(observable);
     }
 }

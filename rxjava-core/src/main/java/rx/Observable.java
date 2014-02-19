@@ -6169,7 +6169,7 @@ public class Observable<T> {
      * @return Observable of Observables each emitting one item of this Observable
      */
     public final Observable<Observable<T>> separate() {
-        return OperationSeparate.separate(this);
+        return create(OperationSeparate.separate(this));
     }
     
     /**
