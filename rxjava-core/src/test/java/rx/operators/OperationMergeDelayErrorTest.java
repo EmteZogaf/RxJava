@@ -289,6 +289,36 @@ public class OperationMergeDelayErrorTest {
         verify(stringObserver, times(1)).onCompleted();
     }
 
+    @Test
+    public void testErrorInParentObservableDelayed() throws Exception {
+        final TestASynchronous1sDelayedObservable o1 = new TestASynchronous1sDelayedObservable();
+        final TestASynchronous1sDelayedObservable o2 = new TestASynchronous1sDelayedObservable();
+        Observable<Observable<String>> parentObservable = Observable.create(new Observable.OnSubscribeFunc<Observable<String>>() {
+            @Override
+            public Subscription onSubscribe(Observer<? super Observable<String>> op) {
+                op.onNext(Observable.create(o1));
+                op.onNext(Observable.create(o2));
+                op.onError(new NullPointerException("throwing exception in parent"));
+                return Subscriptions.empty();
+            }
+        });
+
+        @SuppressWarnings("unchecked")
+        Observable<String> m = Observable.create(mergeDelayError(parentObservable));
+        m.subscribe(stringObserver);
+
+        try {
+            o1.t.join();
+            o2.t.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        
+        verify(stringObserver, times(1)).onError(any(NullPointerException.class));
+        verify(stringObserver, never()).onCompleted();
+        verify(stringObserver, times(2)).onNext("hello");
+    }
+    
     private static class TestSynchronousObservable implements Observable.OnSubscribeFunc<String> {
 
         @Override
@@ -317,6 +347,31 @@ public class OperationMergeDelayErrorTest {
             });
             t.start();
 
+            return Subscriptions.empty();
+        }
+    }
+
+    private static class TestASynchronous1sDelayedObservable implements Observable.OnSubscribeFunc<String> {
+        Thread t;
+        
+        @Override
+        public Subscription onSubscribe(final Observer<? super String> observer) {
+            t = new Thread(new Runnable() {
+                
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        observer.onError(e);
+                    }
+                    observer.onNext("hello");
+                    observer.onCompleted();
+                }
+                
+            });
+            t.start();
+            
             return Subscriptions.empty();
         }
     }
