@@ -14,6 +14,8 @@ package rx;
 
 import static rx.functions.Functions.*;
 
+import rx.operators.OperationSeparate;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -6160,6 +6162,16 @@ public class Observable<T> {
         return lift(new OperatorScan<R, T>(initialValue, accumulator));
     }
 
+    /**
+     * Each of the emitted items of this observable will be wrapped in an {@code Observable} and {@code Observable}
+     * emitting these {@code Observables} will be returned
+     * 
+     * @return Observable of Observables each emitting one item of this Observable
+     */
+    public final Observable<Observable<T>> separate() {
+        return OperationSeparate.separate(this);
+    }
+    
     /**
      * If the source Observable completes after emitting a single item, return an Observable that emits that
      * item. If the source Observable emits more than one item or no items, throw an
